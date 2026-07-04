@@ -1,0 +1,812 @@
+{
+  "info": {
+    "name": "Recipe Platform API",
+    "description": "Full auto-chained test suite: Auth -> Recipes -> Reviews -> Favorites -> Collections",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api" },
+    { "key": "token", "value": "" },
+    { "key": "recipeId", "value": "" },
+    { "key": "reviewId", "value": "" },
+    { "key": "collectionId", "value": "" },
+    { "key": "testEmail", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "tokenB", "value": "" },
+    { "key": "userIdB", "value": "" },
+    { "key": "testEmailB", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const data = pm.response.json();",
+                  "pm.test('Response has token', () => pm.expect(data.token).to.exist);",
+                  "pm.test('passwordHash NOT leaked', () => pm.expect(data.user.passwordHash).to.be.undefined);",
+                  "if (data.token) pm.collectionVariables.set('token', data.token);",
+                  "if (data.user && data.user.id) pm.collectionVariables.set('userId', data.user.id);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const ts = Date.now();",
+                  "pm.collectionVariables.set('testEmail', `testuser_${ts}@example.com`);",
+                  "pm.collectionVariables.set('testUsername', `testuser_${ts}`);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"Test@1234\",\n  \"bio\": \"Testing via Postman\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json();",
+                  "pm.test('Response has token', () => pm.expect(data.token).to.exist);",
+                  "if (data.token) pm.collectionVariables.set('token', data.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"Test@1234\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Login - Wrong Password (should fail 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 for wrong password', () => pm.response.to.have.status(401));",
+                  "pm.test('Error does not leak whether email exists', () => {",
+                  "  const msg = pm.response.json().message;",
+                  "  pm.expect(msg).to.eql('Invalid credentials');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"WrongPassword\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Recipes",
+      "item": [
+        {
+          "name": "Create Recipe (with Cloudinary image)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const data = pm.response.json();",
+                  "pm.test('Recipe has id', () => pm.expect(data.recipe.id).to.exist);",
+                  "pm.test('coverImage is a real Cloudinary URL', () => {",
+                  "  pm.expect(data.recipe.coverImage).to.include('res.cloudinary.com');",
+                  "});",
+                  "if (data.recipe && data.recipe.id) pm.collectionVariables.set('recipeId', data.recipe.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title", "value": "Paneer Butter Masala", "type": "text" },
+                { "key": "description", "value": "Rich and creamy North Indian curry", "type": "text" },
+                { "key": "prepTime", "value": "15", "type": "text" },
+                { "key": "cookTime", "value": "25", "type": "text" },
+                { "key": "servings", "value": "4", "type": "text" },
+                { "key": "difficultyLevel", "value": "Medium", "type": "text" },
+                { "key": "coverImage", "type": "file", "src": [] }
+              ]
+            },
+            "url": "{{baseUrl}}/recipes"
+          }
+        },
+        {
+          "name": "Get All Recipes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json();",
+                  "pm.test('Has pagination fields', () => {",
+                  "  pm.expect(data).to.have.property('total');",
+                  "  pm.expect(data).to.have.property('recipes');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/recipes?page=1&limit=10"
+          }
+        },
+        {
+          "name": "Get Recipe By ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json();",
+                  "pm.test('Has ingredients and instructions arrays', () => {",
+                  "  pm.expect(data.ingredients).to.be.an('array');",
+                  "  pm.expect(data.instructions).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/recipes/{{recipeId}}"
+          }
+        },
+        {
+          "name": "Update Recipe (owner only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Paneer Butter Masala (Updated)\",\n  \"servings\": 6\n}"
+            },
+            "url": "{{baseUrl}}/recipes/{{recipeId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Reviews",
+      "item": [
+        {
+          "name": "Add Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const data = pm.response.json();",
+                  "pm.test('Rating is stored correctly', () => pm.expect(data.review.rating).to.eql(5));",
+                  "if (data.review && data.review.id) pm.collectionVariables.set('reviewId', data.review.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Amazing recipe, tasted just like restaurant style!\"\n}"
+            },
+            "url": "{{baseUrl}}/reviews/{{recipeId}}"
+          }
+        },
+        {
+          "name": "Duplicate Review (should fail 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 409 - one review per user per recipe', () => pm.response.to.have.status(409));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"comment\": \"Trying to review again\"\n}"
+            },
+            "url": "{{baseUrl}}/reviews/{{recipeId}}"
+          }
+        },
+        {
+          "name": "Get Recipe Reviews",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response is an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/reviews/{{recipeId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Favorites",
+      "item": [
+        {
+          "name": "Toggle Favorite (Add)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('favorited is true', () => pm.expect(pm.response.json().favorited).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/favorites/{{recipeId}}"
+          }
+        },
+        {
+          "name": "Get My Favorites",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Contains the recipe we favorited', () => {",
+                  "  const ids = pm.response.json().map(r => String(r.id));",
+                  "  pm.expect(ids).to.include(String(pm.collectionVariables.get('recipeId')));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/favorites"
+          }
+        },
+        {
+          "name": "Toggle Favorite (Remove)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('favorited is false', () => pm.expect(pm.response.json().favorited).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/favorites/{{recipeId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Collections",
+      "item": [
+        {
+          "name": "Create Collection",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const data = pm.response.json();",
+                  "if (data.collection && data.collection.id) pm.collectionVariables.set('collectionId', data.collection.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Weeknight Dinners\",\n  \"description\": \"Quick recipes for busy days\"\n}"
+            },
+            "url": "{{baseUrl}}/collections"
+          }
+        },
+        {
+          "name": "Add Recipe to Collection",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/collections/{{collectionId}}/recipes/{{recipeId}}"
+          }
+        },
+        {
+          "name": "Get My Collections",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json();",
+                  "pm.test('Collection contains the added recipe', () => {",
+                  "  const target = data.find(c => String(c.id) === String(pm.collectionVariables.get('collectionId')));",
+                  "  pm.expect(target, 'matching collection should exist').to.exist;",
+                  "  pm.expect(target.recipes.length).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/collections"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Security Checks",
+      "item": [
+        {
+          "name": "Create Recipe WITHOUT token (should fail 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 - unauthenticated request blocked', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Should not work\"\n}"
+            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/recipes"
+          }
+        },
+        {
+          "name": "Delete Recipe with FAKE token (should fail 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 - fake JWT rejected', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer this.is.not.a.real.jwt" }],
+            "url": "{{baseUrl}}/recipes/{{recipeId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Profile",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json();",
+                  "pm.test('passwordHash NOT leaked', () => pm.expect(data.passwordHash).to.be.undefined);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/users/me"
+          }
+        },
+        {
+          "name": "Update My Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Updated bio via Postman test suite\"\n}"
+            },
+            "url": "{{baseUrl}}/users/me"
+          }
+        },
+        {
+          "name": "Get My Recipes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response is an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/users/me/recipes"
+          }
+        },
+        {
+          "name": "Get My Favorites (via profile route)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/users/me/favorites"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Follow & Feed (2-user flow)",
+      "item": [
+        {
+          "name": "Register User B",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const ts = Date.now();",
+                  "pm.collectionVariables.set('testEmailB', `testuserB_${ts}@example.com`);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const data = pm.response.json();",
+                  "if (data.token) pm.collectionVariables.set('tokenB', data.token);",
+                  "if (data.user && data.user.id) pm.collectionVariables.set('userIdB', data.user.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuserB_{{$timestamp}}\",\n  \"email\": \"{{testEmailB}}\",\n  \"password\": \"Test@1234\",\n  \"bio\": \"I am user B\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "User A Follows User B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/follows/{{userIdB}}"
+          }
+        },
+        {
+          "name": "Follow Same User Again (should fail 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 409 - duplicate follow blocked', () => pm.response.to.have.status(409));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/follows/{{userIdB}}"
+          }
+        },
+        {
+          "name": "Follow Self (should fail 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400 - cannot follow yourself', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/follows/{{userId}}"
+          }
+        },
+        {
+          "name": "Get Who I'm Following",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json();",
+                  "pm.test('User B is in the following list', () => {",
+                  "  const ids = data.map(u => String(u.id));",
+                  "  pm.expect(ids).to.include(String(pm.collectionVariables.get('userIdB')));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/follows/following"
+          }
+        },
+        {
+          "name": "User B Creates a Recipe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenB}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title", "value": "User B's Recipe", "type": "text" },
+                { "key": "description", "value": "Testing the activity feed", "type": "text" },
+                { "key": "prepTime", "value": "10", "type": "text" },
+                { "key": "cookTime", "value": "20", "type": "text" },
+                { "key": "servings", "value": "2", "type": "text" },
+                { "key": "difficultyLevel", "value": "Easy", "type": "text" }
+              ]
+            },
+            "url": "{{baseUrl}}/recipes"
+          }
+        },
+        {
+          "name": "Get My Feed (should show User B's recipe)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json();",
+                  "pm.test('Feed is a non-empty array', () => {",
+                  "  pm.expect(Array.isArray(data) || Array.isArray(data.feed)).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/feed"
+          }
+        },
+        {
+          "name": "User A Unfollows User B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/follows/{{userIdB}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Admin",
+      "item": [
+        {
+          "name": "Ban User as Non-Admin (should fail 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403 - admin middleware blocks non-admins', () => pm.response.to.have.status(403));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/users/{{userIdB}}/ban"
+          }
+        }
+      ]
+    }
+  ]
+}
