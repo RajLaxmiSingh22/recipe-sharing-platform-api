@@ -32,28 +32,39 @@ function Follow() {
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: "30px auto", padding: "0 20px" }}>
-      <h1>Follow Users</h1>
-      <form onSubmit={handleFollow} style={{ marginBottom: 20 }}>
+    <div className="max-w-lg mx-auto px-4 py-6">
+      <h1 className="text-xl font-medium mb-4">Follow users</h1>
+
+      <form onSubmit={handleFollow} className="flex gap-2 mb-6">
         <input
-          placeholder="User ID to follow"
+          placeholder="User ID or username to follow"
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
           required
-          style={{ padding: 8, width: "70%" }}
+          className="flex-1 h-10 px-3 rounded-lg border border-gray-200 text-sm"
         />
-        <button type="submit" style={{ padding: 8, marginLeft: 8 }}>Follow</button>
+        <button className="bg-gray-900 text-white px-4 rounded-lg text-sm">Follow</button>
       </form>
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
-      <h3>Following</h3>
+      <p className="font-medium text-sm mb-2">Following</p>
       {following.length === 0 ? (
-        <p>You're not following anyone yet.</p>
+        <p className="text-sm text-gray-500">You're not following anyone yet.</p>
       ) : (
         following.map((u) => (
-          <div key={u.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #eee" }}>
-            <span>{u.username}</span>
-            <button onClick={() => handleUnfollow(u.id)}>Unfollow</button>
+          <div key={u.id} className="flex items-center justify-between py-2.5 border-b border-gray-200">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-medium">
+                {u.username?.slice(0, 2).toUpperCase()}
+              </div>
+              <p className="text-sm">{u.username}</p>
+            </div>
+            <button
+              onClick={() => handleUnfollow(u.id)}
+              className="text-xs px-3 py-1 rounded-lg border border-gray-200"
+            >
+              Unfollow
+            </button>
           </div>
         ))
       )}

@@ -8,36 +8,67 @@ import Collections from "./pages/Collections";
 import Admin from "./pages/Admin";
 import Follow from "./pages/Follow";
 import Feed from "./pages/Feed";
+import CreateRecipe from "./pages/CreateRecipe";
+import EditRecipe from "./pages/EditRecipe";
+import Favorites from "./pages/Favorites";
+import Profile from "./pages/Profile";
+
 function Nav() {
   const { user, logout } = useAuth();
   return (
-    <nav
-      style={{
-        padding: 16,
-        borderBottom: "1px solid #ccc",
-        display: "flex",
-        gap: 16,
-        alignItems: "center",
-      }}
-    >
-      <Link to="/">Recipes</Link>
-      {user && <Link to="/collections">My Collections</Link>}
-      {user?.role === "admin" && <Link to="/admin">Admin</Link>}
+    <nav className="flex items-center gap-4 px-6 py-4 border-b border-gray-200">
+      <Link to="/" className="font-medium">
+        Recipes
+      </Link>
+      {user && (
+        <Link to="/collections" className="text-sm text-gray-600">
+          My collections
+        </Link>
+      )}
+      {user && (
+        <Link to="/favorites" className="text-sm text-gray-600">
+          Favorites
+        </Link>
+      )}
+      {user?.role === "admin" && (
+        <Link to="/admin" className="text-sm text-gray-600">
+          Admin
+        </Link>
+      )}
+      {user && (
+        <Link to="/follow" className="text-sm text-gray-600">
+          Follow
+        </Link>
+      )}
+      {user && (
+        <Link to="/feed" className="text-sm text-gray-600">
+          Feed
+        </Link>
+      )}
+      {user && (
+        <Link to="/create-recipe" className="text-sm text-blue-700">
+          + New recipe
+        </Link>
+      )}
 
-      {user && <Link to="/follow">Follow</Link>}
-      {user && <Link to="/feed">Feed</Link>}
-      <span style={{ marginLeft: "auto" }}>
+      <span className="ml-auto flex items-center gap-3">
         {user ? (
           <>
-            <span style={{ marginRight: 12 }}>Hi, {user.username}</span>
-            <button onClick={logout}>Logout</button>
+            <Link to="/profile" className="text-sm text-gray-500">
+              Hi, {user.username}
+            </Link>
+            <button onClick={logout} className="text-sm px-3 py-1.5 rounded-lg border border-gray-200">
+              Logout
+            </button>
           </>
         ) : (
           <>
-            <Link to="/login" style={{ marginRight: 12 }}>
+            <Link to="/login" className="text-sm">
               Login
             </Link>
-            <Link to="/register">Register</Link>
+            <Link to="/register" className="text-sm">
+              Register
+            </Link>
           </>
         )}
       </span>
@@ -53,9 +84,12 @@ function App() {
         <Routes>
           <Route path="/" element={<RecipeList />} />
           <Route path="/recipes/:id" element={<RecipeDetail />} />
+          <Route path="/edit-recipe/:id" element={<EditRecipe />} />
           <Route path="/collections" element={<Collections />} />
+          <Route path="/favorites" element={<Favorites />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/admin" element={<Admin />} />
-
+          <Route path="/create-recipe" element={<CreateRecipe />} />
           <Route path="/follow" element={<Follow />} />
           <Route path="/feed" element={<Feed />} />
           <Route path="/login" element={<Login />} />
