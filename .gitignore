@@ -12,6 +12,7 @@ node_modules/
 .env.production.local
 .env.test.local
 
+.login_pass.txt
 # ===========================
 # Logs
 # ===========================
